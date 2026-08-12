@@ -1,0 +1,92 @@
+booth_datapath ka code
+
+
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 07/15/2026 12:26:36 AM
+// Design Name: 
+// Module Name: booth_datapath
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module booth_datapath #(
+    parameter N = 8
+)(
+    input  wire             clk,
+    input  wire             rst,
+    input  wire             load,          
+    input  wire [N-1:0]     M_in,
+    input  wire [N-1:0]     Q_in,
+    input  wire [1:0]       op_sel,        
+    input  wire             shift_en,      
+    input  wire             count_dec,     
+
+    output wire              Q0,            
+    output wire              Qm1,           
+    output wire              count_zero,    
+    output wire [2*N-1:0]    product        
+);
+
+    
+    reg [N-1:0]              M_r, Q_r;
+    reg [N:0]                A_r;     
+    reg                      Qm1_r;
+    reg [$clog2(N+1)-1:0]    count_r;
+
+    wire [N:0]  M_ext      = {M_r[N-1], M_r};   
+    wire [N:0]  add_result = A_r + M_ext;
+    wire [N:0]  sub_result = A_r - M_ext;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            M_r     <= {N{1'b0}};
+            A_r     <= {(N+1){1'b0}};
+            Q_r     <= {N{1'b0}};
+            Qm1_r   <= 1'b0;
+            count_r <= 0;
+        end
+        else if (load) begin
+            M_r     <= M_in;
+            Q_r     <= Q_in;
+            A_r     <= {(N+1){1'b0}};
+            Qm1_r   <= 1'b0;
+            count_r <= N[$clog2(N+1)-1:0];
+        end
+        else begin
+            
+            if (op_sel == 2'b01)
+                A_r <= add_result;
+            else if (op_sel == 2'b10)
+                A_r <= sub_result;
+
+            
+            if (shift_en) begin
+                {A_r, Q_r, Qm1_r} <= {A_r[N], A_r, Q_r};
+            end
+
+            
+            if (count_dec)
+                count_r <= count_r - 1'b1;
+        end
+    end
+
+    assign Q0         = Q_r[0];
+    assign Qm1        = Qm1_r;
+    assign count_zero = (count_r == 0);
+    assign product     = {A_r[N-1:0], Q_r};   
+endmodule
+
