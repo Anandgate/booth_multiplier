@@ -1,0 +1,147 @@
+
+booth_tb ka hai code
+
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 07/15/2026 12:34:01 AM
+// Design Name: 
+// Module Name: booth_tb
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+module booth_tb;
+
+    localparam N = 8;
+    localparam CLK_PERIOD = 10;
+
+    reg              clk;
+    reg              rst;
+    reg              start;
+    reg  [N-1:0]     M_in;
+    reg  [N-1:0]     Q_in;
+    wire [2*N-1:0]   product;
+    wire             done;
+
+    integer errors = 0;
+    integer tests  = 0;
+
+   
+    booth_top #(.N(N)) DUT (
+        .clk     (clk),
+        .rst     (rst),
+        .start   (start),
+        .M_in    (M_in),
+        .Q_in    (Q_in),
+        .product (product),
+        .done    (done)
+    );
+
+
+    initial clk = 1'b0;
+    always #(CLK_PERIOD/2) clk = ~clk;
+
+    task run_test;
+        input signed [N-1:0]     m_val;
+        input signed [N-1:0]     q_val;
+        reg    signed [2*N-1:0]  expected;
+        reg    signed [2*N-1:0]  got;
+        begin
+            tests = tests + 1;
+
+            @(negedge clk);
+            M_in  = m_val;
+            Q_in  = q_val;
+            start = 1'b1;
+
+            @(negedge clk);
+            start = 1'b0;
+
+            
+            wait (done === 1'b1);
+
+            expected = m_val * q_val; 
+            got      = product;
+
+            if (got !== expected) begin
+                errors = errors + 1;
+                $display("[FAIL] Test %0d: M=%0d Q=%0d  Expected=%0d  Got=%0d",
+                          tests, m_val, q_val, expected, got);
+            end else begin
+                $display("[PASS] Test %0d: M=%0d Q=%0d  Product=%0d",
+                          tests, m_val, q_val, got);
+            end
+
+            
+            @(negedge clk);
+        end
+    endtask
+
+    integer i;
+    reg signed [N-1:0] rand_m, rand_q;
+
+    initial begin
+        $display("=== Booth Multiplier Testbench (N=%0d) ===", N);
+
+        rst   = 1'b1;
+        start = 1'b0;
+        M_in  = 0;
+        Q_in  = 0;
+        repeat (2) @(negedge clk);
+        rst = 1'b0;
+        @(negedge clk);
+
+        run_test( 8'sd0,   8'sd0);      // 0 x 0
+        run_test( 8'sd1,   8'sd1);      // 1 x 1
+        run_test( 8'sd5,   8'sd3);      // pos x pos
+        run_test(-8'sd5,   8'sd3);      // neg x pos
+        run_test( 8'sd5,  -8'sd3);      // pos x neg
+        run_test(-8'sd5,  -8'sd3);      // neg x neg
+        run_test( 8'sd127, 8'sd127);    // max positive x max positive
+        run_test(-8'sd128, 8'sd1);      // max negative (no positive counterpart) x 1
+        run_test(-8'sd128,-8'sd128);    // max negative x max negative (largest magnitude)
+        run_test( 8'sd127,-8'sd128);    // max positive x max negative
+        run_test( 8'sd1,   8'sd0);      // operand = 0 case
+        run_test(-8'sd1,   8'sd0);      // negative x 0
+
+        for (i = 0; i < 30; i = i + 1) begin
+            rand_m = $random;
+            rand_q = $random;
+            run_test(rand_m, rand_q);
+        end
+
+        $display("=========================================");
+        if (errors == 0)
+            $display("ALL %0d TESTS PASSED", tests);
+        else
+            $display("%0d / %0d TESTS FAILED", errors, tests);
+        $display("=========================================");
+
+        $finish;
+    end
+
+    initial begin
+        #200000;
+        $display("[TIMEOUT] Simulation did not finish in time.");
+        $finish;
+    end
+
+    initial begin
+        $dumpfile("booth_tb.vcd");
+        $dumpvars(0, booth_tb);
+    end
+
+endmodule
+
