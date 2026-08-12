@@ -1,0 +1,118 @@
+booth controller ka code
+
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 07/15/2026 12:29:34 AM
+// Design Name: 
+// Module Name: booth_controller
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module booth_controller (
+    input  wire       clk,
+    input  wire       rst,
+    input  wire       start,
+    input  wire       Q0,
+    input  wire       Qm1,
+    input  wire       count_zero,
+
+    output reg        load,
+    output reg [1:0]  op_sel,     
+    output reg        shift_en,
+    output reg        count_dec,
+    output reg        done
+);
+
+   
+    localparam IDLE    = 3'd0,
+               LOAD_S   = 3'd1,
+               DECODE   = 3'd2,
+               ADD_SUB  = 3'd3,
+               SHIFT    = 3'd4,
+               CHECK    = 3'd5,
+               DONE_S   = 3'd6;
+
+    reg [2:0] state, next_state;
+
+  
+    always @(posedge clk or posedge rst) begin
+        if (rst)
+            state <= IDLE;
+        else
+            state <= next_state;
+    end
+
+    always @(*) begin
+        next_state = state;
+        case (state)
+            IDLE:    next_state = start ? LOAD_S : IDLE;
+            LOAD_S:  next_state = DECODE;
+            DECODE: begin
+                case ({Q0, Qm1})
+                    2'b01:   next_state = ADD_SUB;   
+                    2'b10:   next_state = ADD_SUB;   
+                    default: next_state = SHIFT;     
+                endcase
+            end
+            ADD_SUB: next_state = SHIFT;
+            SHIFT:   next_state = CHECK;
+            CHECK:   next_state = count_zero ? DONE_S : DECODE;
+            DONE_S:  next_state = start ? DONE_S : IDLE; 
+            default: next_state = IDLE;
+        endcase
+    end
+
+    always @(*) begin
+       
+        load      = 1'b0;
+        op_sel    = 2'b00;
+        shift_en  = 1'b0;
+        count_dec = 1'b0;
+        done      = 1'b0;
+
+        case (state)
+            IDLE: begin
+              
+            end
+            LOAD_S: begin
+                load = 1'b1;
+            end
+            DECODE: begin
+                
+            end
+            ADD_SUB: begin
+                case ({Q0, Qm1})
+                    2'b01:   op_sel = 2'b01; 
+                    2'b10:   op_sel = 2'b10; 
+                    default: op_sel = 2'b00;
+                endcase
+            end
+            SHIFT: begin
+                shift_en  = 1'b1;
+                count_dec = 1'b1;
+            end
+            CHECK: begin
+               
+            end
+            DONE_S: begin
+                done = 1'b1;
+            end
+        endcase
+    end
+
+endmodule
+
