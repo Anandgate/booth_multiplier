@@ -1,0 +1,77 @@
+booth_top ka code
+
+
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 07/15/2026 12:22:58 AM
+// Design Name: 
+// Module Name: booth_top
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module booth_top #(
+    parameter N = 8
+)(
+    input  wire             clk,
+    input  wire             rst,
+    input  wire             start,
+    input  wire [N-1:0]     M_in,     
+    input  wire [N-1:0]     Q_in,     
+    output wire [2*N-1:0]   product,
+    output wire             done
+);
+
+    wire       load;
+    wire [1:0] op_sel;
+    wire       shift_en;
+    wire       count_dec;
+    wire       Q0;
+    wire       Qm1;
+    wire       count_zero;
+
+    booth_datapath #(.N(N)) u_datapath (
+        .clk        (clk),
+        .rst        (rst),
+        .load       (load),
+        .M_in       (M_in),
+        .Q_in       (Q_in),
+        .op_sel     (op_sel),
+        .shift_en   (shift_en),
+        .count_dec  (count_dec),
+        .Q0         (Q0),
+        .Qm1        (Qm1),
+        .count_zero (count_zero),
+        .product    (product)
+    );
+
+    booth_controller u_controller (
+        .clk        (clk),
+        .rst        (rst),
+        .start      (start),
+        .Q0         (Q0),
+        .Qm1        (Qm1),
+        .count_zero (count_zero),
+        .load       (load),
+        .op_sel     (op_sel),
+        .shift_en   (shift_en),
+        .count_dec  (count_dec),
+        .done       (done)
+    );
+
+endmodule
+
+
